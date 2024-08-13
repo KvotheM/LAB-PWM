@@ -1,32 +1,34 @@
+//Agregamos las librerias para el programa
 #include <Arduino.h>
 #include "driver/ledc.h"
-
+// asignamos los pines de los botones
 #define b_aumento 19
 #define b_resta 15
 #define b3 34
 #define b4 33
 
 #define PWM_servo 0  // Canal PWM1
-
+//establecemos los datos para la generación del PWM
 #define freqPWM 50
 #define resPWM 10
 #define pin_servo 21
-
+//asignamos los pines de los PWM DE LOS leds
 #define PWM_rojo 8
 #define PWM_verde 9
 #define PWM_azul 10
-
+//asignamos los pines de los leds
 #define pin_PWMr 13
 #define pin_PWMv 12
 #define pin_PWMa 14
-
+//hacemos los arrays para las señales de salida de los pwm
 int duty[] = {26, 52, 77, 103, 128};
 int inte[] = {0, 26, 52, 77, 103, 128};
 
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
-volatile int derecha;
-volatile int izquierda;
+//establecemos las variables para el movimiento generado por los botones 
+volatile int sumar;
+volatile int restar;
 uint8_t cont_bot = 0;
 
 volatile int color;
@@ -39,50 +41,51 @@ volatile unsigned long debounce1 = 0;
 volatile unsigned long debounce2 = 0;
 volatile unsigned long debounce3 = 0; // Para BTN3
 volatile unsigned long debounce4 = 0; // Para BTN4
-
+//Se establecen las funciones de movimiento del servo y las funciones de interrupción de los botones 
 void IRAM_ATTR SUMA_ISR();
 void IRAM_ATTR RESTA_ISR();
 void IRAM_ATTR bot3_ISR();
 void IRAM_ATTR bot4_ISR();
-
+//Se estabecen las funciones de iniciación de señales PWM
 void initPWM_servo(void);
 void initPWM_r(void);
 void initPWM_v(void);
 void initPWM_a(void);
 
 void setup() {
+//Se establecen las entradas y salidas 
   pinMode(b_aumento, INPUT_PULLDOWN);
   pinMode(b_resta, INPUT_PULLDOWN);
   pinMode(b3, INPUT_PULLDOWN);
   pinMode(b4, INPUT_PULLDOWN);
-
+//Se da inicio a la señal PWM
   initPWM_servo();
   initPWM_r();
   initPWM_v();
   initPWM_a();
-
+//Se establecen las interrupciones 
   attachInterrupt(digitalPinToInterrupt(b_aumento), SUMA_ISR, RISING);
   attachInterrupt(digitalPinToInterrupt(b_resta), RESTA_ISR, RISING);
   attachInterrupt(digitalPinToInterrupt(b3), bot3_ISR, RISING);
   attachInterrupt(digitalPinToInterrupt(b4), bot4_ISR, RISING);
 
-  Serial.begin(115200);
+  Serial.begin(115200);//Empieza comunicación serial 
 }
 
 void loop() {
   Serial.printf("numero %u\n", cont_bot);
-  derecha = digitalRead(b_aumento);
-  izquierda = digitalRead(b_resta);
+  sumar = digitalRead(b_aumento);
+  restar = digitalRead(b_resta);
 
   color = digitalRead(b3);
   intensidad = digitalRead(b4);
-
+//Ciclo for para recorrer el duty cicle  del servo y así poder moverlo en ángulos determinados 
   for (int i = 0; i < 6; i++) {
     if (cont_bot == i & cont_bot != 5) {
       ledcWrite(PWM_servo, duty[i]);
     }
   }
-
+//Se establecen casos para el comportamienyto de las leds en modo normal y modo servo 
   switch (cont_led) {
     case 0:
       ledcWrite(PWM_verde, 0);
@@ -122,13 +125,13 @@ void loop() {
       break;
   }
 }
-
+//Función de señal PW servo 
 void initPWM_servo(void) {
   ledcSetup(PWM_servo, freqPWM, resPWM);
   ledcAttachPin(pin_servo, PWM_servo);
   ledcWrite(PWM_servo, 0);
 }
-
+//Funciones de señal PWM leds
 void initPWM_r(void) {
   ledcSetup(PWM_rojo, freqPWM, resPWM);
   ledcAttachPin(pin_PWMr, PWM_rojo);
@@ -146,7 +149,7 @@ void initPWM_a(void) {
   ledcAttachPin(pin_PWMa, PWM_azul);
   ledcWrite(PWM_azul, 0);
 }
-
+//Establecemos función de moviento de servo 
 void IRAM_ATTR SUMA_ISR() {
   unsigned long currentTime = millis();
   if ((currentTime - debounce1) > debounce_delay) {
@@ -171,7 +174,7 @@ void IRAM_ATTR RESTA_ISR() {
     debounce2 = currentTime;
   }
 }
-
+//Se establecen interrupciones de botones para control de leds 
 void IRAM_ATTR bot3_ISR() {
   unsigned long currentTime = millis();
   if ((currentTime - debounce3) > debounce_delay) {
